@@ -1,0 +1,75 @@
+from web3 import Web3
+import web3
+from web3.exceptions import ContractLogicError
+from web3.middleware import ExtraDataToPOAMiddleware
+from contract import ABI, addresss_contract 
+
+class w3():
+    def init(self) -> None:
+        self.w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
+        if self.w3.is_connected:
+            self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+            self.contract = self.w3.eth.contract(address=addresss_contract, abi=ABI)
+            print("Подлючение к сети было успешно проведенно")
+        else:
+            print("Подключение к сети было прерванно с некоторыми ошибками")
+    
+    # call
+
+    def call_Admin(self):
+        return self.contract.functions.Admin().call()
+    
+    def call_sales(self, sID):
+        return self.contract.functions.sales(sID).call()
+    
+    def call_items(self, iID):
+        return self.contract.functions.items(iID).call()
+    
+    # Transact
+
+    def create_item(self, name, owner, supplier, price, date, number, status, addres_signatures):
+        try:
+            tx = self.contract.functions.CreateItem(name, owner, supplier, price, date, number, status).transact({"from": addres_signatures})
+            self.w3.eth.wait_for_transaction_receipt(tx)
+        except ContractLogicError as e:
+            return f"{e}"
+        
+    def create_sale(self, iID, price, addres_signatures):
+        try:
+            tx = self.contract.functions.CreateSale(iID, price).transact({"from": addres_signatures})
+            self.w3.eth.wait_for_transaction_receipt(tx)
+        except ContractLogicError as e:
+            return f"{e}"
+        
+    def canel_sale(self, sID, addres_signatures):
+        try:
+            tx = self.contract.functions.CanelSale(sID).transact({"from": addres_signatures})
+            self.w3.eth.wait_for_transaction_receipt(tx)
+        except ContractLogicError as e:
+            return f"{e}"
+        
+    # Transact paybel
+
+    def buy(self, sID, value, addres_signatures):
+        try:
+            value = self.Wei_to_eth(value)
+            tx = self.contract.functions.Buy(sID).transact({"from": addres_signatures, "value": value})
+            self.w3.eth.wait_for_transaction_receipt(tx)
+        except ContractLogicError as e:
+            return e
+
+    # eth working
+
+    def Balance_OF(self, address):
+        return web3.Web3.from_wei(self.w3.eth.get_balance(address), "ether")
+    
+    def accounts(self):
+        return self.w3.eth.accounts
+    
+    def Wei_to_eth(self, value):
+        return web3.Web3.from_wei(value, "ether")
+
+
+if name == "main":
+    w = w3()
+    print(w.accounts())
