@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+
+
+contract PP {
+
+modifier isExitItem(uint256 iID) {
+require(iID < items.length, "600");
+_;
+}
+
+modifier isAdmin() {
+require(msg.sender == Admin, "100");
+_;
+}
+
+modifier isOwner(uint256 iID) {
+require(msg.sender == items[iID].owner, "101");
+_;
+}
+
+modifier isOkayItem (uint iID) {
+require(false == items[iID].SaleStat, "200");
+require(false == items[iID].Arest, "201");
+_;
+}
+
+
+struct Item{
+uint256 iID;
+string name;
+address owner; 
+address supplier;
+uint256 price;
+string date; // 12.02.2023
+string number;
+STAT status;
+bool SaleStat;
+bool Arest;
+}
+
+struct Sale {
+uint256 sID;
+uint256 iID;
+address owner;
+address newOwner;
+uint price;
+bool active;
+uint256 exhibitionTime;
+uint256 endExhibition;
+}
+
+enum STAT{
+flies,
+walks,
+looks,
+floats
+}
+
+address public Admin;
+
+Item[] public items;
+Sale[] public sales;
+
+
+constructor() {
+Admin = msg.sender;
+items.push(Item(0, "Shark", Admin, Admin, 10, "10.01.2025", "0W01", STAT.floats, false, false));
+items.push(Item(1, "Parrot", Admin, Admin, 1, "15.10.2025", "0F02", STAT.flies, false, false));
+items.push(Item(2, "Rhinoceros", Admin, Admin, 15, "15.01.2024", "0E03", STAT.walks, false, false));
+}
+
+function CreateItem(string memory _name,address _owner,address _supplier,uint256 _price,string memory _date,string memory _number,STAT _status) public isAdmin() {
+items.push(Item(items.length, _name, _owner, _supplier, _price, _date, _number, _status, false, false));
+} 
+
+function ArestStat(uint256 _iID) public isAdmin() isExitItem(_iID){
+if (items[_iID].Arest == true) {
+items[_iID].Arest = false;
+}
+else {
+items[_iID].Arest = true;
+}
+}
+
+function CreateSale(uint256 _iID, uint256 _price) public isOwner(_iID) isOkayItem(_iID) isExitItem(_iID){
+require(_price != 0, "401");
+sales.push(Sale(sales.length, _iID, msg.sender, address(0), _price * (10**18), true, block.timestamp, 0));
+items[_iID].SaleStat = true;
+}
+
+function CanelSale(uint256 _sID) public {
+require(sales[_sID].owner == msg.sender, "402");
+require(sales[_sID].active == true, "403");
+require(_sID < sales.length, "404");
+sales[_sID].active = false;
+items[sales[_sID].iID].SaleStat = false;
+}
+
+function Buy(uint256 _sID) public payable {
+require(_sID < sales.length, "404");
+require(sales[_sID].active == true, "403");
+require(msg.value == sales[_sID].price, "405");
+require(msg.sender != sales[_sID].owner, "406");
+sales[_sID].newOwner = msg.sender;
+sales[_sID].endExhibition = block.timestamp - sales[_sID].exhibitionTime ;
+sales[_sID].active = false;
+items[sales[_sID].iID].SaleStat = false;
+items[sales[_sID].iID].owner = msg.sender;
+payable(sales[_sID].owner).transfer(msg.value); 
+}
+
+
+}
+
